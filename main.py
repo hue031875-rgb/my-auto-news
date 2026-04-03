@@ -1,10 +1,11 @@
-import feedparser
+    import feedparser
 import requests
 import os
 
 def get_news():
     # 1. 검색 키워드 최적화 (현대차, 테슬라, SDV, 자율주행, 전기차투자 등)
-    query = "현대차 OR 테슬라 OR BYD OR SDV OR 자율주행 OR 자동차투자"
+        # 공백 문제를 방지하기 위해 검색어를 더 깔끔하게 정리했습니다.
+    query = "현대차|테슬라|BYD|SDV|자율주행|자동차투자"
     rss_url = f"https://news.google.com/rss/search?q={query}&hl=ko&gl=KR&ceid=KR:ko"
     
     feed = feedparser.parse(rss_url)
