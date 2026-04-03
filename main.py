@@ -33,3 +33,6 @@ def send_telegram():
 
 if __name__ == "__main__":
     send_telegram()
+    # 36행 부근 requests.post... 바로 아래에 추가
+    response = requests.post(url, data={"chat_id": chat_id, "text": message})
+    print(f"텔레그램 응답: {response.text}") # 이 줄을 추가하면 에러 원인을 알려줍니다.
