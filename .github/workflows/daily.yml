@@ -2,19 +2,28 @@ name: Daily Auto News
 
 on:
   schedule:
-    - cron: '0 23 * * *' # UTC 기준 (한국 시간 아침 8시 정각)
-  workflow_dispatch:      # 직접 테스트해볼 수 있는 버튼 생성
+    - cron: '0 23 * * *' # 한국 시간 매일 오전 8시 정각 (UTC 23:00)
+  workflow_dispatch:      # 직접 실행 버튼 활성화
 
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v3
+
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.9'
+
       - name: Install dependencies
         run: pip install feedparser requests
+
       - name: Run Script
+        # 이 env 부분이 금고(Secrets)와 코드(main.py)를 연결하는 핵심 열쇠입니다!
+        env:
+          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+          USER_ID: ${{ secrets.USER_ID }}
         run: python main.py
