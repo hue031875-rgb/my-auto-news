@@ -3,42 +3,36 @@ import requests
 import os
 
 def get_news():
-    # 수집하고 싶은 키워드를 설정합니다.
     query = "현대차|테슬라|BYD|SDV|자율주행|자동차투자"
     rss_url = f"https://news.google.com/rss/search?q={query}&hl=ko&gl=KR&ceid=KR:ko"
     feed = feedparser.parse(rss_url)
     all_news = []
-    
-    # 제외하고 싶은 단어가 포함된 뉴스는 거릅니다.
     filter_words = ['중고차', '렌트', '리스', '할부', '시승기', '판매합니다']
 
     for entry in feed.entries[:15]:
         if not any(word in entry.title for word in filter_words):
             all_news.append(f"▶ {entry.title}\n🔗 {entry.link}")
-            if len(all_news) >= 6: # 최대 6개까지만 가져옵니다.
+            if len(all_news) >= 6:
                 break
     return all_news
 
 def send_telegram():
-    # GitHub Secrets에서 새 이름으로 저장한 값을 가져옵니다.
-    token = os.environ.get('BOT_TOKEN')
-    chat_id = os.environ.get('USER_ID')
+    # .strip()을 붙여서 혹시 모를 눈에 안 보이는 찌꺼기 문자를 강제로 제거합니다.
+    token = str(os.environ.get('BOT_TOKEN')).strip()
+    chat_id = str(os.environ.get('USER_ID')).strip()
     
     news_list = get_news()
-    
-    if not news_list:
-        message = "오늘의 주요 자동차 산업 뉴스가 없습니다."
-    else:
-        message = "🚗 [자동차 산업 트렌드 요약] 🚗\n\n" + "\n\n".join(news_list)
+    message = "🚗 [자동차 산업 트렌드 요약] 🚗\n\n" + "\n\n".join(news_list) if news_list else "오늘의 뉴스가 없습니다."
 
-    # 텔레그램 메시지 전송 주소를 생성합니다.
-    url = f"https://api.telegram.org/bot{token}/sendMessage"
+    # 가장 안전한 방식으로 URL을 생성합니다.
+    url = "https://api.telegram.org/bot" + token + "/sendMessage"
     
-    # 메시지를 전송하고 결과를 로그에 남깁니다.
+    # 전송 시도
     response = requests.post(url, data={"chat_id": chat_id, "text": message})
     
     print("-" * 30)
-    print(f"텔레그램 응답 결과: {response.text}")
+    print(f"사용된 토큰 앞글자: {token[:5]}***") # 보안상 앞부분만 출력해서 확인
+    print(f"텔레그램 응답: {response.text}")
     print("-" * 30)
 
 if __name__ == "__main__":
