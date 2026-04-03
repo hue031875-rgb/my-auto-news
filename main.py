@@ -1,4 +1,4 @@
-import feedparser
+    import feedparser
 import requests
 import os
 
@@ -27,10 +27,8 @@ def send_telegram():
     
     news_list = get_news()
     
-    if not news_list:
-        message = "오늘의 주요 자동차 산업 뉴스가 없습니다."
-    else:
-        message = "🚗 [오늘의 자동차 산업 트렌드 요약] 🚗\n\n" + "\n\n".join(news_list)
+    # 기존 if/else 문을 싹 지우고 아래 한 줄만 남겨보세요.
+message = "텔레그램 연결 성공! 이제 뉴스만 받으면 됩니다."
 
     url = f"https://api.telegram.org/bot{token}/sendMessage"
     requests.post(url, data={"chat_id": chat_id, "text": message})
