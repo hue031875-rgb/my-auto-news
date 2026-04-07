@@ -1,6 +1,6 @@
 name: Daily Auto News
 
-  on:
+on:
   schedule:
     # 1. 아침 배달: 한국 시간 오전 7시 (서버 지연 대비해 UTC 21:00로 설정)
     - cron: '0 21 * * *'
@@ -9,7 +9,6 @@ name: Daily Auto News
     - cron: '0 6 * * *'
     
   workflow_dispatch: # 직접 실행 버튼
-
 
 jobs:
   build:
@@ -28,7 +27,6 @@ jobs:
         run: pip install feedparser requests
 
       - name: Run Script
-        # 이 env 부분이 금고(Secrets)와 코드(main.py)를 연결하는 핵심 열쇠입니다!
         env:
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
           USER_ID: ${{ secrets.USER_ID }}
