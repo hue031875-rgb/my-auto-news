@@ -1,9 +1,15 @@
 name: Daily Auto News
 
-on:
+  on:
   schedule:
-    - cron: '0 22 * * *' # 한국 시간 매일 오전 7시 정각 (UTC 22:00)
-  workflow_dispatch:      # 직접 실행 버튼 활성화
+    # 1. 아침 배달: 한국 시간 오전 7시 (서버 지연 대비해 UTC 21:00로 설정)
+    - cron: '0 21 * * *'
+    
+    # 2. 오후 배달: 한국 시간 오후 3시 (UTC 06:00)
+    - cron: '0 6 * * *'
+    
+  workflow_dispatch: # 직접 실행 버튼
+
 
 jobs:
   build:
