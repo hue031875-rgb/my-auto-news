@@ -1,22 +1,80 @@
+import feedparser
+import requests
+import os
+import urllib.parse
+
 def get_news():
-    # 쿼리를 아주 단순하게 나열합니다. 
-    # 전문지 이름들을 앞쪽에 배치하고, 범위를 2d(48시간)로 유지합니다.
-    query = '오토헤럴드 OR 모터그래프 OR 오토데일리 OR "현대차 투자" when:2d'
+    # 1. 여러 개의 쿼리를 나누어 검색하여 수집 확률을 극대화합니다.
+    queries = [
+        '오토헤럴드 when:2d',
+        '모터그래프 when:2d',
+        '현대차 "투자" OR "전략" when:2d'
+    ]
     
-    encoded_query = urllib.parse.quote(query)
-    rss_url = f"https://news.google.com/rss/search?q={encoded_query}&hl=ko&gl=KR&ceid=KR:ko"
-    
-    feed = feedparser.parse(rss_url)
-    
-    # 만약 뉴스가 하나도 없다면, 검색 범위를 강제로 7일로 넓혀서 다시 검색합니다.
-    if not feed.entries:
-        print("48시간 내 뉴스가 없어 7일로 범위를 넓힙니다.")
-        query = '오토헤럴드 OR 모터그래프 OR 오토데일리 OR "현대차 투자" when:7d'
-        encoded_query = urllib.parse.quote(query)
+    all_entries = []
+    for q in queries:
+        encoded_query = urllib.parse.quote(q)
         rss_url = f"https://news.google.com/rss/search?q={encoded_query}&hl=ko&gl=KR&ceid=KR:ko"
         feed = feedparser.parse(rss_url)
+        all_entries.extend(feed.entries)
+
+    if not all_entries:
+        print("경고: 모든 쿼리에서 수집된 뉴스가 없습니다.")
+        return []
 
     high_priority = []
     normal_news = []
     
-    # ... (나머지 분류 로직은 동일)
+    priority_keywords = ['투자', '전략', '분석', '기획', '전망', '공시', 'SDV']
+    special_media = ['오토헤럴드', '모터그래프', '오토데일리']
+
+    # 중복 제거를 위한 링크 저장소
+    seen_links = set()
+
+    for entry in all_entries[:60]:
+        if entry.link in seen_links:
+            continue
+        seen_links.add(entry.link)
+            
+        news_item = f"▶ {entry.title}\n🔗 {entry.link}"
+        
+        is_special = any(media in entry.title for media in special_media)
+        is_priority = any(key in entry.title for key in priority_keywords)
+        
+        if is_special or is_priority:
+            high_priority.append(news_item)
+        else:
+            normal_news.append(news_item)
+
+    final_message = []
+    if high_priority:
+        final_message.append("🎯 [전문지 및 핵심 분석] 🎯")
+        final_message.extend(high_priority[:10])
+        final_message.append("\n" + "="*20 + "\n")
+        
+    if normal_news:
+        final_message.append("📰 [주요 업계 동향] 📰")
+        final_message.extend(normal_news[:5])
+        
+    return final_message
+
+def send_telegram():
+    token = str(os.environ.get('BOT_TOKEN', '')).strip()
+    chat_id = str(os.environ.get('USER_ID', '')).strip()
+    
+    news_list = get_news()
+    
+    if not news_list:
+        print("전송할 뉴스가 없어 종료합니다.")
+        return
+
+    message = "🚗 [자동차 산업 리포트] 🚗\n\n" + "\n\n".join(news_list)
+    url = f"https://api.telegram.org/bot{token}/sendMessage"
+    response = requests.post(url, data={"chat_id": chat_id, "text": message, "disable_web_page_preview": True})
+    
+    print(f"텔레그램 전송 시도 결과: {response.status_code}")
+    if response.status_code != 200:
+        print(f"에러 메시지: {response.text}")
+
+if __name__ == "__main__":
+    send_telegram()
