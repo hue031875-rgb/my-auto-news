@@ -4,7 +4,6 @@ import os
 import urllib.parse
 
 def get_news():
-    # 1. 여러 개의 쿼리를 나누어 검색하여 수집 확률을 극대화합니다.
     queries = [
         '오토헤럴드 when:2d',
         '모터그래프 when:2d',
@@ -19,62 +18,51 @@ def get_news():
         all_entries.extend(feed.entries)
 
     if not all_entries:
-        print("경고: 모든 쿼리에서 수집된 뉴스가 없습니다.")
         return []
 
     high_priority = []
     normal_news = []
-    
-    priority_keywords = ['투자', '전략', '분석', '기획', '전망', '공시', 'SDV']
-    special_media = ['오토헤럴드', '모터그래프', '오토데일리']
-
-    # 중복 제거를 위한 링크 저장소
     seen_links = set()
 
     for entry in all_entries[:60]:
-        if entry.link in seen_links:
-            continue
+        if entry.link in seen_links: continue
         seen_links.add(entry.link)
             
         news_item = f"▶ {entry.title}\n🔗 {entry.link}"
-        
-        is_special = any(media in entry.title for media in special_media)
-        is_priority = any(key in entry.title for key in priority_keywords)
-        
-        if is_special or is_priority:
+        if any(media in entry.title for media in ['오토헤럴드', '모터그래프', '오토데일리']) or \
+           any(key in entry.title for key in ['투자', '전략', '분석', '기획', '전망', '공시', 'SDV']):
             high_priority.append(news_item)
         else:
             normal_news.append(news_item)
 
-    final_message = []
+    # 메시지를 구성합니다.
+    final_chunks = []
+    
     if high_priority:
-        final_message.append("🎯 [전문지 및 핵심 분석] 🎯")
-        final_message.extend(high_priority[:10])
-        final_message.append("\n" + "="*20 + "\n")
+        chunk = "🎯 [전문지 및 핵심 분석] 🎯\n\n" + "\n\n".join(high_priority[:15])
+        final_chunks.append(chunk)
         
     if normal_news:
-        final_message.append("📰 [주요 업계 동향] 📰")
-        final_message.extend(normal_news[:5])
+        chunk = "📰 [주요 업계 동향] 📰\n\n" + "\n\n".join(normal_news[:10])
+        final_chunks.append(chunk)
         
-    return final_message
+    return final_chunks
 
 def send_telegram():
     token = str(os.environ.get('BOT_TOKEN', '')).strip()
     chat_id = str(os.environ.get('USER_ID', '')).strip()
+    chunks = get_news()
     
-    news_list = get_news()
-    
-    if not news_list:
-        print("전송할 뉴스가 없어 종료합니다.")
+    if not chunks:
+        print("전송할 뉴스가 없습니다.")
         return
 
-    message = "🚗 [자동차 산업 리포트] 🚗\n\n" + "\n\n".join(news_list)
-    url = f"https://api.telegram.org/bot{token}/sendMessage"
-    response = requests.post(url, data={"chat_id": chat_id, "text": message, "disable_web_page_preview": True})
-    
-    print(f"텔레그램 전송 시도 결과: {response.status_code}")
-    if response.status_code != 200:
-        print(f"에러 메시지: {response.text}")
+    for message in chunks:
+        url = f"https://api.telegram.org/bot{token}/sendMessage"
+        # 글자 수 제한 안전장치: 혹시 모르니 한 번 더 자릅니다.
+        payload = {"chat_id": chat_id, "text": message[:4000], "disable_web_page_preview": True}
+        response = requests.post(url, data=payload)
+        print(f"전송 결과: {response.status_code}")
 
 if __name__ == "__main__":
     send_telegram()
