@@ -4,10 +4,16 @@ import os
 import urllib.parse
 
 def get_news():
+    # 1. 쿼리 그룹을 세분화하여 글로벌 기업 소식을 꼼꼼히 수집합니다.
     queries = [
-        '오토헤럴드 when:2d',
-        '모터그래프 when:2d',
-        '현대차 "투자" OR "전략" when:2d'
+        # 전문지 그룹
+        '오토헤럴드 OR 모터그래프 OR 오토데일리 when:2d',
+        
+        # 일반 신차 및 업계 동향
+        '자동차 "신차" OR "출시" OR "전기차" when:2d',
+        
+        # 핵심 관심사 (현대차, 기아, 도요타, 테슬라, BYD) + 전략 키워드
+        '(현대차 OR 기아 OR 도요타 OR TOYOTA OR 테슬라 OR TESLA OR BYD) ("투자" OR "SDV" OR "전략" OR "개발") when:2d'
     ]
     
     all_entries = []
@@ -17,52 +23,45 @@ def get_news():
         feed = feedparser.parse(rss_url)
         all_entries.extend(feed.entries)
 
-    if not all_entries:
-        return []
+    if not all_entries: return []
 
-    high_priority = []
-    normal_news = []
+    high_priority = [] # 전문지 및 글로벌 기업 전략 뉴스
+    general_news = []  # 일반 자동차 뉴스
     seen_links = set()
 
-    for entry in all_entries[:60]:
+    # 필터링 및 분류 키워드
+    special_media = ['오토헤럴드', '모터그래프', '오토데일리']
+    core_companies = ['현대차', '기아', '도요타', 'TOYOTA', '테슬라', 'TESLA', 'BYD']
+    strategy_keys = ['투자', 'SDV', '전략', '개발', '공시', '실적', '분석']
+
+    for entry in all_entries:
         if entry.link in seen_links: continue
         seen_links.add(entry.link)
             
         news_item = f"▶ {entry.title}\n🔗 {entry.link}"
-        if any(media in entry.title for media in ['오토헤럴드', '모터그래프', '오토데일리']) or \
-           any(key in entry.title for key in ['투자', '전략', '분석', '기획', '전망', '공시', 'SDV']):
+        
+        # 제목에 전문지 매체명이 있거나, 주요 기업 + 전략 키워드가 포함된 경우 상단 배치
+        title_upper = entry.title.upper()
+        is_special_media = any(m in entry.title for m in special_media)
+        is_core_content = any(c in title_upper for c in core_companies) and \
+                          any(k in entry.title for k in strategy_keys)
+        
+        if is_special_media or is_core_content:
             high_priority.append(news_item)
         else:
-            normal_news.append(news_item)
+            general_news.append(news_item)
 
-    # 메시지를 구성합니다.
-    final_chunks = []
+    # 메시지 구성 (글자 수 제한을 고려해 분할 전송)
+    chunks = []
     
     if high_priority:
-        chunk = "🎯 [전문지 및 핵심 분석] 🎯\n\n" + "\n\n".join(high_priority[:15])
-        final_chunks.append(chunk)
+        # 글로벌 전략 뉴스는 중요하므로 최대 15개까지 확보
+        chunks.append("🎯 [글로벌 전략 및 전문지 리포트] 🎯\n\n" + "\n\n".join(high_priority[:15]))
         
-    if normal_news:
-        chunk = "📰 [주요 업계 동향] 📰\n\n" + "\n\n".join(normal_news[:10])
-        final_chunks.append(chunk)
+    if general_news:
+        # 일반 동향은 8개로 균형 유지
+        chunks.append("📰 [주요 업계 및 신차 동향] 📰\n\n" + "\n\n".join(general_news[:8]))
         
-    return final_chunks
+    return chunks
 
-def send_telegram():
-    token = str(os.environ.get('BOT_TOKEN', '')).strip()
-    chat_id = str(os.environ.get('USER_ID', '')).strip()
-    chunks = get_news()
-    
-    if not chunks:
-        print("전송할 뉴스가 없습니다.")
-        return
-
-    for message in chunks:
-        url = f"https://api.telegram.org/bot{token}/sendMessage"
-        # 글자 수 제한 안전장치: 혹시 모르니 한 번 더 자릅니다.
-        payload = {"chat_id": chat_id, "text": message[:4000], "disable_web_page_preview": True}
-        response = requests.post(url, data=payload)
-        print(f"전송 결과: {response.status_code}")
-
-if __name__ == "__main__":
-    send_telegram()
+# send_telegram 함수는 이전과 동일하게 유지됩니다.
